@@ -1,0 +1,65 @@
+{
+  "entities": {
+    "Spot": {
+      "title": "Spot",
+      "description": "A spotted vehicle entry with photos, metadata, specs, and rarity classification",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "make": { "type": "string", "maxLength": 100 },
+        "model": { "type": "string", "maxLength": 100 },
+        "variant": { "type": "string", "maxLength": 150 },
+        "year": { "type": "number" },
+        "rarity": { "type": "string", "enum": ["legendary", "epic", "rare", "common"] },
+        "rarityReason": { "type": "string", "maxLength": 500 },
+        "photos": { "type": "array", "description": "Array of photo image URLs or base64 data" },
+        "coverPhotoIndex": { "type": "number" },
+        "location": { "type": "string", "maxLength": 200 },
+        "spottedAt": { "type": "string", "maxLength": 100 },
+        "spotter": { "type": "string", "maxLength": 100 },
+        "userId": { "type": "string", "maxLength": 128 },
+        "specs": { "type": "object", "description": "Vehicle technical specifications" },
+        "notes": { "type": "string", "maxLength": 1000 },
+        "likes": { "type": "number" },
+        "createdAt": { "type": "string", "maxLength": 100 }
+      },
+      "required": ["make", "model", "rarity", "photos", "location", "spottedAt"]
+    },
+    "Like": {
+      "title": "Like",
+      "description": "A like/upvote record on a car spot",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "createdAt": { "type": "string", "maxLength": 100 }
+      },
+      "required": ["userId"]
+    },
+    "User": {
+      "title": "User",
+      "description": "Spotter profile info",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "displayName": { "type": "string", "maxLength": 100 },
+        "photoURL": { "type": "string", "maxLength": 500 },
+        "createdAt": { "type": "string", "maxLength": 100 }
+      },
+      "required": ["uid"]
+    }
+  },
+  "firestore": {
+    "/spots/{spotId}": {
+      "schema": "Spot",
+      "description": "Public car spotting records catalog"
+    },
+    "/spots/{spotId}/likes/{userId}": {
+      "schema": "Like",
+      "description": "Subcollection tracking which users liked a particular spot"
+    },
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles for authenticated spotters"
+    }
+  }
+}

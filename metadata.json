@@ -1,0 +1,6 @@
+{
+  "name": "SPOTTER - Car Spotting & Exotic Vehicle Registry",
+  "description": "Minimalist, modern automotive spotting app. Track, catalog, and rate hypercars, supercars, and rare vehicles with camera capture and automatic rarity detection.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

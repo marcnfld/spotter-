@@ -1,0 +1,95 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net: Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Hardened Helper Primitives
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Spot Validation Blueprint
+    function isValidSpot(data) {
+      return data.keys().hasAll(['make', 'model', 'rarity', 'photos', 'location', 'spottedAt']) &&
+        data.make is string && data.make.size() > 0 && data.make.size() <= 100 &&
+        data.model is string && data.model.size() > 0 && data.model.size() <= 100 &&
+        data.rarity in ['legendary', 'epic', 'rare', 'common'] &&
+        data.photos is list && data.photos.size() > 0 && data.photos.size() <= 20 &&
+        data.location is string && data.location.size() <= 200 &&
+        data.spottedAt is string && data.spottedAt.size() <= 100 &&
+        (!('variant' in data) || (data.variant is string && data.variant.size() <= 150)) &&
+        (!('notes' in data) || (data.notes is string && data.notes.size() <= 1000)) &&
+        (!('spotter' in data) || (data.spotter is string && data.spotter.size() <= 100)) &&
+        (!('year' in data) || data.year is number) &&
+        (!('likes' in data) || (data.likes is number && data.likes >= 0));
+    }
+
+    // 1. Spots Collection (Public car spotting registry)
+    match /spots/{spotId} {
+      allow read: if true;
+
+      // Allow both authenticated spotters and guest spotters to submit valid car spots
+      allow create: if isValidId(spotId) &&
+        isValidSpot(incoming()) &&
+        (isSignedIn() ? (!('userId' in incoming()) || incoming().userId == request.auth.uid) : (!('userId' in incoming()) || incoming().userId == ''));
+
+      allow update: if isValidId(spotId) && (
+        // Action 1: Owner full edit
+        (isSignedIn() &&
+         ('userId' in existing()) &&
+         existing().userId != '' &&
+         existing().userId == request.auth.uid &&
+         isValidSpot(incoming()) &&
+         incoming().userId == existing().userId) ||
+
+        // Action 2: Community upvote/like increment
+        (incoming().diff(existing()).affectedKeys().hasOnly(['likes']) &&
+         incoming().likes is number &&
+         incoming().likes >= 0) ||
+
+        // Action 3: Additional photo append
+        (incoming().diff(existing()).affectedKeys().hasOnly(['photos']) &&
+         incoming().photos is list &&
+         incoming().photos.size() <= 20)
+      );
+
+      allow delete: if isSignedIn() &&
+        isValidId(spotId) &&
+        ('userId' in existing()) &&
+        existing().userId != '' &&
+        existing().userId == request.auth.uid;
+
+      // Likes Subcollection
+      match /likes/{userId} {
+        allow read: if true;
+        allow create, update, delete: if isSignedIn() && userId == request.auth.uid && isValidId(userId);
+      }
+    }
+
+    // 2. User Profiles Collection
+    match /users/{userId} {
+      allow read: if true;
+      allow create, update: if isSignedIn() &&
+        userId == request.auth.uid &&
+        isValidId(userId) &&
+        incoming().uid == request.auth.uid;
+      allow delete: if isSignedIn() && userId == request.auth.uid;
+    }
+  }
+}
